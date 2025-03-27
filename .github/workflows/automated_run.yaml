@@ -21,7 +21,9 @@ jobs:
 
       - name: Install dependencies
         run: |
+          pip3 install --upgrade pip3
           pip3 install -r requirements.txt
+          pip3 install git+https://github.com/toddrob99/MLB-StatsAPI.git  # Manually install statsapi
 
       - name: Run the script
         run: python last_five_games.py
