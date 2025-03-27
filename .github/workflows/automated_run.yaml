@@ -26,5 +26,7 @@ jobs:
           pip3 install git+https://github.com/toddrob99/MLB-StatsAPI.git  # Manually install statsapi
 
       - name: Run the script
-        run: python last_five_games.py
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+        run: python write_to_sheets.py
   

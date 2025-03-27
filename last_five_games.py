@@ -176,9 +176,13 @@ for game in games_today:
         ,moneyline,fav_odds_dk,dog_odds_dk,dog_ml_gap] # hi
     df_todays_games.loc[len(df_todays_games)] = data_todays_games
 
-print("Today's Lines:")
-print(df_todays_games.to_string())
+# print("Today's Lines:")
+# print(df_todays_games.to_string())
 
 take_these_lines = df_todays_games[df_todays_games['dog_odds_gap'] > 10]
-print("\nTake these lines!")
-print(take_these_lines.to_string())
+# print("\nTake these lines!")
+# print(take_these_lines.to_string())
+
+def run_predictions():
+    print(take_these_lines.to_string())
+    return take_these_lines
