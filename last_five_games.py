@@ -25,7 +25,7 @@ for game in last_five:
     data = [date,away,away_id,away_score,home,home_id,home_score]
     df.loc[len(df)] = data
 
-#print(df.to_string())
+df = df[(df['home_score']>0) | (df['away_score']>0)]
 
 # gets list of all teams in the league
 get_teams = statsapi.lookup_team('')
@@ -46,7 +46,7 @@ for team in teams:
     team_away_games = df[df.away_team == team]
     team_home_games = df[df.home_team == team]
     all_team_games = [team_home_games, team_away_games]
-    team_games = pd.concat(all_team_games).tail(5)
+    team_games = pd.concat(all_team_games).sort_values(by='date', ascending=True).tail(5)
 
     # calculates run differential for the team over the last five games
     team_away_games_runs = team_games[team_games.away_team == team]
@@ -62,9 +62,6 @@ for team in teams:
     # writes a record to the dataframe containing team and last five games run differential
     data_run_diff = [str(team), str(team_run_differential)]
     df_run_diff.loc[len(df_run_diff)] = data_run_diff
-
-# returns teams last five game run differential
-# print(df_run_diff.to_string())
 
 # draftkings API specs
 API_KEY = '7f908dfa6f555a6f509f958b2353ce65'
@@ -89,7 +86,6 @@ odds_response = requests.get(
     }
 )
 
-
 odds_json = odds_response.json()
 
 columns = ['date','team','odds']
@@ -108,7 +104,6 @@ for game in odds_json:
         odds_df.loc[len(odds_df)] = data
 
 todays_odds = odds_df[odds_df.date == EST_DATE]
-#print(todays_odds.to_string())
 
 next_date_odds = odds_df.date.min()
 

@@ -63,18 +63,14 @@ for i in range(3,11):
         data_run_diff = [str(team), str(team_run_differential), lookback]
         df_run_diff.loc[len(df_run_diff)] = data_run_diff
 
-# returns teams last five game run differential
-#print(df_run_diff.to_string())
-
 # draftkings API specs
 API_KEY = '7f908dfa6f555a6f509f958b2353ce65'
-SPORT = 'baseball_mlb_preseason'  # baseball_mlb for regular season
+SPORT = 'baseball_mlb'  # baseball_mlb for regular season
 REGIONS = 'us'
 MARKETS = 'h2h'  # h2h | spreads | totals. Multiple can be specified if comma delimited
 ODDS_FORMAT = 'american'
 DATE_FORMAT = 'iso'
 BOOKMAKER = 'draftkings'
-
 
 # gets list of all MLB games moneylines
 odds_response = requests.get(
@@ -85,7 +81,7 @@ odds_response = requests.get(
         'markets': MARKETS,
         'oddsFormat': ODDS_FORMAT,
         'dateFormat': DATE_FORMAT,
-        'bookmakers': BOOKMAKER,
+        'bookmakers': BOOKMAKER
     }
 )
 
@@ -109,7 +105,6 @@ for game in odds_json:
 next_date_odds = odds_df.date.min()
 
 # # gets all games played today
-#games_today = statsapi.schedule(start_date=datetime.now().date(), end_date=datetime.now().date())
 games_today = statsapi.schedule(start_date=next_date_odds, end_date=next_date_odds)
 
 
@@ -201,5 +196,3 @@ for game in games_today:
     plot.set_ylabel("Underdog ML")
     plot.legend(["running_ml", "five_game_ml",'dk_ml']);
     mp.show()
-
-
