@@ -1,4 +1,4 @@
-from last_five_games import run_predictions
+#from last_five_games import run_predictions
 import tweepy
 import os
 
