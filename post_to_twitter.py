@@ -14,16 +14,17 @@ auth.set_access_token(access_token, access_token_secret)
 api = tweepy.API(auth)
 
 # Get your model result (this could be any result from your script)
-todays_preds = run_predictions()
-print(todays_preds)
+# todays_preds = run_predictions()
+# print(todays_preds)
 
 # Construct your tweet text
-tweet_text = f"Daily model update: {todays_preds}"
+#tweet_text = f"Daily model update: {todays_preds}"
+tweet_text = f"Daily model update: "
 print(tweet_text)
 
 # Post the tweet
-# try:
-#     api.update_status(tweet_text)
-#     print("Tweet posted successfully!")
-# except Exception as e:
-#     print("An error occurred:", e)
+try:
+    api.update_status(tweet_text)
+    print("Tweet posted successfully!")
+except Exception as e:
+    print("An error occurred:", e)
