@@ -1,0 +1,35 @@
+name: Post Daily Picks
+
+on:
+  schedule:
+    - cron: "3 10 * * *"  # Runs every day at 14:00 UTC / 7:00 PST
+
+  workflow_dispatch:  # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip3 install --upgrade pip
+          pip3 install -r requirements.txt
+          pip3 install git+https://github.com/toddrob99/MLB-StatsAPI.git  # Manually install statsapi
+
+      - name: Run the script
+        env:
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
+        run: python post_to_twitter.py
+
