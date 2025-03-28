@@ -14,13 +14,11 @@ todays_preds = run_predictions()
 print(todays_preds)
 
 # Construct your tweet text
-#tweet_text = f"Daily model update: {todays_preds}"
 tweet_text = f"Daily model update: "
 print(tweet_text)
 
 # Post the tweet
 # try:
-#     #api.update_status(tweet_text)
 #     client.create_tweet(text=tweet_text)
 #     print("Tweet posted successfully!")
 # except Exception as e:
