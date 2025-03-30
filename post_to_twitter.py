@@ -35,8 +35,11 @@ for index, row in todays_preds.iterrows():
     picks.append(pick_text)
 
 # Construct your tweet text
-header = f"{formatted_date} Underdog ML Picks:"
-tweet_text = f"{header}\n\n" + "\n".join(picks) + "\n" + "RT if you're riding todays dogs!" + "\n" + "#MLB #GamblingTwitter #FreePicks #GamblingX #MLBBets"
+if len(picks) > 0:
+    header = f"{formatted_date} Underdog ML Picks:"
+    tweet_text = f"{header}\n\n" + "\n".join(picks) + "\n\n" + "Fortune favors the bold... Let's cash in!!" + "\n\n" + "#MLB #GamblingTwitter #FreePicks #GamblingX #MLBBets"
+else:
+    tweet_text = f"Our model didn't identify any underdog value bets today. It's a long season, so let's stay disciplined and stick to our system. Check back tomorrow for our next round of picks!💪💪💪" + "\n\n" + "In the meantime, what are your favorite bets today?"
 print(tweet_text)
 
 # Post the tweet
