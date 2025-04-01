@@ -2,7 +2,7 @@ name: Run MLB Betting Script
 
 on:
   schedule:
-    - cron: "30 12 * * *"  # Runs every day at 14:00 UTC / 7:00 PST
+    - cron: "30 14 * * *"  # Runs every day at 14:00 UTC / 7:00 PST
 
   workflow_dispatch:  # Allows manual trigger from GitHub Actions tab
 
