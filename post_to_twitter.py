@@ -4,7 +4,7 @@ import tweepy
 import os
 
 today = date.today()
-formatted_date = today.strftime("%m/%d")
+formatted_date = today.strftime("%-m/%-d")
 
 client = tweepy.Client(
     consumer_key=os.getenv("X_API_KEY"),

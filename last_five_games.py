@@ -150,8 +150,8 @@ for game in games_today:
                 'Chicago White Sox','New York Yankees','Los Angeles Angels','Baltimore Orioles','Boston Red Sox',
                 'Cleveland Guardians','Detroit Tigers','Houston Astros','Kansas City Royals']
 
-    al_cents_per_run = 1 / 4.55
-    nl_cents_per_run = 1 / 4.67
+    al_cents_per_run = 1 / 4.2742998353
+    nl_cents_per_run = 1 / 4.512345679
 
     if home_team in al_teams:
         moneyline = round(((al_cents_per_run * run_diff_one_game) * 100) + 100,0)
