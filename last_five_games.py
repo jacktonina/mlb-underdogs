@@ -176,7 +176,10 @@ for game in games_today:
         ,moneyline,fav_odds_dk,dog_odds_dk,dog_ml_gap] # hi
     df_todays_games.loc[len(df_todays_games)] = data_todays_games
 
-take_these_lines = df_todays_games[(df_todays_games['dog_odds_gap'] > 10) & (df_todays_games['dog_ml_dk'] < 200)]
+block_list = ['Colorado Rockies', 'Chicago White Sox']
+todays_eligible_games = df_todays_games[~df_todays_games['dog'].isin(block_list)]
+
+take_these_lines = todays_eligible_games[(todays_eligible_games['dog_odds_gap'] > 10) & (todays_eligible_games['dog_ml_dk'] < 200)]
 
 def run_predictions():
     print(take_these_lines.to_string())
