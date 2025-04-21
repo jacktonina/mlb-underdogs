@@ -1,0 +1,285 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLB Prediction Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background-color: #1a3a76;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .games-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .game-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            width: 600px;
+            margin-bottom: 20px;
+        }
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .team-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .team {
+            text-align: center;
+            width: 45%;
+        }
+        .vs {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 10%;
+        }
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+        .odds-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .odds-table th, .odds-table td {
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        .odds-table th {
+            background-color: #f2f2f2;
+        }
+        .pitcher-name {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .dk-odds {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .fade-effect {
+            opacity: 0;
+            animation: fadeIn 0.8s forwards;
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MLB Prediction Dashboard</h1>
+        <p>Model Moneyline Predictions Using Different Game History Ranges</p>
+    </div>
+
+    <div class="games-container" id="gamesContainer">
+        <!-- Game cards will be inserted here by JavaScript -->
+    </div>
+
+    <script>
+        // Parse game data from Flask
+        const gameData = JSON.parse('{{ game_data|safe }}');
+
+        // Function to create game cards
+        function createGameCards() {
+            const container = document.getElementById('gamesContainer');
+
+            gameData.forEach((game, index) => {
+                setTimeout(() => {
+                    // Create game card element
+                    const gameCard = document.createElement('div');
+                    gameCard.className = 'game-card fade-effect';
+
+                    // Create game header
+                    const gameHeader = document.createElement('div');
+                    gameHeader.className = 'game-header';
+                    gameHeader.innerHTML = `
+                        <h2>${game.away_team} @ ${game.home_team}</h2>
+                        <div>${game.game_time}</div>
+                    `;
+
+                    // Create team info section
+                    const teamInfo = document.createElement('div');
+                    teamInfo.className = 'team-info';
+                    teamInfo.innerHTML = `
+                        <div class="team">
+                            <div>${game.away_team}</div>
+                            <div class="pitcher-name">${game.away_pitcher || 'TBD'}</div>
+                            <div class="dk-odds">DK: ${game.dk_away_odds}</div>
+                        </div>
+                        <div class="vs">@</div>
+                        <div class="team">
+                            <div>${game.home_team}</div>
+                            <div class="pitcher-name">${game.home_pitcher || 'TBD'}</div>
+                            <div class="dk-odds">DK: ${game.dk_home_odds}</div>
+                        </div>
+                    `;
+
+                    // Create chart container
+                    const chartContainer = document.createElement('div');
+                    chartContainer.className = 'chart-container';
+                    const canvas = document.createElement('canvas');
+                    canvas.id = `chart-${index}`;
+                    chartContainer.appendChild(canvas);
+
+                    // Create table for detailed data
+                    const tableContainer = document.createElement('div');
+                    const table = document.createElement('table');
+                    table.className = 'odds-table';
+
+                    // Create table header
+                    const thead = document.createElement('thead');
+                    thead.innerHTML = `
+                        <tr>
+                            <th>Games</th>
+                            <th>${game.away_team} RD</th>
+                            <th>${game.home_team} RD</th>
+                            <th>Favorite</th>
+                            <th>Dog</th>
+                            <th>ML</th>
+                        </tr>
+                    `;
+
+                    // Create table body
+                    const tbody = document.createElement('tbody');
+                    game.range_data.forEach(data => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${data.num_games}</td>
+                            <td>${data.away_run_diff}</td>
+                            <td>${data.home_run_diff}</td>
+                            <td>${data.favorite}</td>
+                            <td>${data.dog}</td>
+                            <td>${data.favorite === game.away_team ? data.fav_ml : data.dog_ml} / ${data.favorite === game.home_team ? data.fav_ml : data.dog_ml}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    table.appendChild(thead);
+                    table.appendChild(tbody);
+                    tableContainer.appendChild(table);
+
+                    // Assemble the card
+                    gameCard.appendChild(gameHeader);
+                    gameCard.appendChild(teamInfo);
+                    gameCard.appendChild(chartContainer);
+                    gameCard.appendChild(tableContainer);
+
+                    // Add card to container
+                    container.appendChild(gameCard);
+
+                    // Create chart
+                    createChart(canvas.id, game);
+
+                }, index * 100); // Stagger the animation
+            });
+        }
+
+        // Function to create chart for a game
+        function createChart(canvasId, game) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+
+            // Prepare data
+            const labels = game.range_data.map(d => `${d.num_games} games`);
+            const awayData = game.range_data.map(d => {
+                return d.favorite === game.away_team ? d.fav_ml : d.dog_ml;
+            });
+            const homeData = game.range_data.map(d => {
+                return d.favorite === game.home_team ? d.fav_ml : d.dog_ml;
+            });
+
+            // Create the chart
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: game.away_team,
+                            data: awayData.map(ml => ml < 0 ? ml : ml),
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1
+                        },
+                        {
+                            label: game.home_team,
+                            data: homeData.map(ml => ml < 0 ? ml : ml),
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Moneyline'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Model ML by Historical Range'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.raw < 0) {
+                                        label += context.raw;
+                                    } else {
+                                        label += '+' + context.raw;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize when the page loads
+        window.onload = function() {
+            createGameCards();
+        };
+    </script>
+</body>
+</html>
+    

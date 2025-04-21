@@ -1,5 +1,8 @@
-pandas
-requests
-gspread
-oauth2client
-tweepy
+pandas~=2.0.0
+requests~=2.32.3
+gspread~=6.0.2
+oauth2client~=4.1.3
+tweepy~=4.15.0
+matplotlib~=3.7.1
+python-dateutil~=2.8.2
+flask~=3.1.0
