@@ -1,186 +1,230 @@
-
-from datetime import *
+from datetime import datetime, timedelta
 from dateutil import parser
 from dateutil import tz
 import statsapi
 import pandas as pd
 import requests
 
-# gets last 8 days of games including today
-last_five = statsapi.schedule(start_date=(datetime.now() - timedelta(days=8)).date(), end_date=(datetime.now() - timedelta(days=1)).date())
 
-# configures data frame to continue the last eight days of games in the league
-columns = ['date', 'away_team', 'away_id','away_score','home_team','home_id','home_score']
-df = pd.DataFrame(columns=columns)
+def get_historical_data(days_back=8):
+    """Get MLB games from the past days_back days and create a dataframe."""
+    # Get historical games
+    start_date = (datetime.now() - timedelta(days=days_back)).date()
+    end_date = (datetime.now() - timedelta(days=1)).date()
+    games = statsapi.schedule(start_date=start_date, end_date=end_date)
 
-# for each game over the last eight days, logs a record into the dataframe above
-for game in last_five:
-    date = game['game_date']
-    away = game['away_name']
-    away_id = game['away_id']
-    away_score = int(game['away_score'])
-    home = game['home_name']
-    home_id = game['home_id']
-    home_score = int(game['home_score'])
-    data = [date,away,away_id,away_score,home,home_id,home_score]
-    df.loc[len(df)] = data
+    # Build dataframe
+    columns = ['date', 'away_team', 'away_id', 'away_score', 'home_team', 'home_id', 'home_score']
+    df = pd.DataFrame(columns=columns)
 
-df = df[(df['home_score']>0) | (df['away_score']>0)]
+    for game in games:
+        date = game['game_date']
+        away = game['away_name']
+        away_id = game['away_id']
+        away_score = int(game['away_score'])
+        home = game['home_name']
+        home_id = game['home_id']
+        home_score = int(game['home_score'])
+        data = [date, away, away_id, away_score, home, home_id, home_score]
+        df.loc[len(df)] = data
 
-# gets list of all teams in the league
-get_teams = statsapi.lookup_team('')
+    # Filter out games without scores
+    return df[(df['home_score'] > 0) | (df['away_score'] > 0)]
 
-# builds a list of all teams
-teams = []
 
-for team in get_teams:
-    teams.append(team['name'])
+def calculate_team_run_differentials(historical_df):
+    """Get all teams and calculate run differentials for each team over their last 5 games."""
+    # Get all teams
+    get_teams = statsapi.lookup_team('')
+    teams = [team['name'] for team in get_teams]
 
-# configures a dataframe to contain each teams run differential over their last five games
-columns_run_diff = ['team', 'l5_run_diff']
-df_run_diff = pd.DataFrame(columns=columns_run_diff)
+    # Calculate run differentials
+    columns_run_diff = ['team', 'l5_run_diff']
+    df_run_diff = pd.DataFrame(columns=columns_run_diff)
 
-# for each team in the league, calculates their run differential over the last five games
-for team in teams:
-    # builds dataframe team_games that contains data on the teams last five games
-    team_away_games = df[df.away_team == team]
-    team_home_games = df[df.home_team == team]
-    all_team_games = [team_home_games, team_away_games]
-    team_games = pd.concat(all_team_games).sort_values(by='date', ascending=True).tail(5)
+    for team in teams:
+        # Build dataframe of team's last five games
+        team_away_games = historical_df[historical_df.away_team == team]
+        team_home_games = historical_df[historical_df.home_team == team]
+        all_team_games = [team_home_games, team_away_games]
+        team_games = pd.concat(all_team_games).sort_values(by='date', ascending=True).tail(5)
 
-    # calculates run differential for the team over the last five games
-    team_away_games_runs = team_games[team_games.away_team == team]
-    team_home_games_runs = team_games[team_games.home_team == team]
-    away_runs_for = team_away_games_runs['away_score'].sum()
-    home_runs_for = team_home_games_runs['home_score'].sum()
-    team_runs_for = int(away_runs_for) + int(home_runs_for)
-    away_runs_against = team_away_games_runs['home_score'].sum()
-    home_runs_against = team_home_games_runs['away_score'].sum()
-    team_runs_against = away_runs_against + home_runs_against
-    team_run_differential = team_runs_for - team_runs_against
+        # Calculate run differential
+        team_away_games_runs = team_games[team_games.away_team == team]
+        team_home_games_runs = team_games[team_games.home_team == team]
+        away_runs_for = team_away_games_runs['away_score'].sum()
+        home_runs_for = team_home_games_runs['home_score'].sum()
+        team_runs_for = int(away_runs_for) + int(home_runs_for)
+        away_runs_against = team_away_games_runs['home_score'].sum()
+        home_runs_against = team_home_games_runs['away_score'].sum()
+        team_runs_against = away_runs_against + home_runs_against
+        team_run_differential = team_runs_for - team_runs_against
 
-    # writes a record to the dataframe containing team and last five games run differential
-    data_run_diff = [str(team), str(team_run_differential)]
-    df_run_diff.loc[len(df_run_diff)] = data_run_diff
+        # Add to dataframe
+        data_run_diff = [str(team), str(team_run_differential)]
+        df_run_diff.loc[len(df_run_diff)] = data_run_diff
 
-# draftkings API specs
-API_KEY = '7f908dfa6f555a6f509f958b2353ce65'
-SPORT = 'baseball_mlb'  # baseball_mlb for regular season / baseball_mlb_preseason for preseason
-REGIONS = 'us'
-MARKETS = 'h2h'  # h2h | spreads | totals. Multiple can be specified if comma delimited
-ODDS_FORMAT = 'american'
-DATE_FORMAT = 'iso'
-BOOKMAKER = 'draftkings'
-EST_DATE = datetime.now().astimezone(tz.gettz('America/New_York')).date()
+    return df_run_diff
 
-# gets list of all MLB games moneylines
-odds_response = requests.get(
-    f'https://api.the-odds-api.com/v4/sports/{SPORT}/odds',
-    params={
-        'api_key': API_KEY,
-        'regions': REGIONS,
-        'markets': MARKETS,
-        'oddsFormat': ODDS_FORMAT,
-        'dateFormat': DATE_FORMAT,
-        'bookmakers': BOOKMAKER
-    }
-)
 
-odds_json = odds_response.json()
+def get_draftkings_odds_df():
+    """Get moneylines from DraftKings API and convert to dataframe."""
+    API_KEY = '7f908dfa6f555a6f509f958b2353ce65'
 
-columns = ['date','team','odds']
-odds_df = pd.DataFrame(columns=columns)
+    # Get odds from API
+    odds_response = requests.get(
+        f'https://api.the-odds-api.com/v4/sports/baseball_mlb/odds',
+        params={
+            'api_key': API_KEY,
+            'regions': 'us',
+            'markets': 'h2h',
+            'oddsFormat': 'american',
+            'dateFormat': 'iso',
+            'bookmakers': 'draftkings'
+        }
+    )
+    odds_json = odds_response.json()
 
-for game in odds_json:
-    start_time = parser.parse(game['commence_time'])
-    date = start_time.astimezone(tz.gettz('America/New_York')).date()
-    home_team = game['home_team']
-    away_team = game['away_team']
-    odds = game['bookmakers'][0]['markets'][0]['outcomes']
-    for i in odds:
-        team = i['name']
-        odds = i['price']
-        data = [date, team, odds]
-        odds_df.loc[len(odds_df)] = data
+    # Convert to dataframe
+    columns = ['date', 'team', 'odds']
+    odds_df = pd.DataFrame(columns=columns)
 
-todays_odds = odds_df[odds_df.date == EST_DATE]
+    for game in odds_json:
+        start_time = parser.parse(game['commence_time'])
+        date = start_time.astimezone(tz.gettz('America/New_York')).date()
+        odds = game['bookmakers'][0]['markets'][0]['outcomes']
+        for i in odds:
+            team = i['name']
+            odds = i['price']
+            data = [date, team, odds]
+            odds_df.loc[len(odds_df)] = data
 
-next_date_odds = odds_df.date.min()
+    return odds_df
 
-# gets all games played today
-games_today = statsapi.schedule(start_date=next_date_odds, end_date=next_date_odds)
 
-columns_todays_games = ['date', 'home_team','away_team','home_pitcher','away_pitcher','home_team_run_diff','away_team_run_diff','favorite'
-    ,'dog','dog_ml','fav_ml_dk','dog_ml_dk','dog_odds_gap']
-df_todays_games = pd.DataFrame(columns=columns_todays_games)
+def analyze_todays_games(df_run_diff, todays_odds):
+    """Get today's games, analyze them and build prediction dataframe."""
+    # Get EST date
+    EST_DATE = datetime.now().astimezone(tz.gettz('America/New_York')).date()
 
-for game in games_today:
-    date = game['game_date']
-    away_team = game['away_name']
-    home_team = game['home_name']
-    away_pitcher = game['away_probable_pitcher']
-    home_pitcher = game['home_probable_pitcher']
-    away_team_run_diff = int(df_run_diff[df_run_diff.team == away_team]['l5_run_diff'].sum())
-    home_team_run_diff = int(df_run_diff[df_run_diff.team == home_team]['l5_run_diff'].sum())
-
-    if away_team_run_diff > 0 and home_team_run_diff > 0 and away_team_run_diff >= home_team_run_diff:
-        run_diff = (away_team_run_diff - home_team_run_diff) / 2
-    elif away_team_run_diff < 0 and home_team_run_diff < 0 and away_team_run_diff >= home_team_run_diff:
-        run_diff = (away_team_run_diff - home_team_run_diff) / 2
-    elif away_team_run_diff > 0 and home_team_run_diff > 0 and away_team_run_diff < home_team_run_diff:
-        run_diff = (home_team_run_diff - away_team_run_diff) / 2
-    elif away_team_run_diff < 0 and home_team_run_diff < 0 and away_team_run_diff < home_team_run_diff:
-        run_diff = (home_team_run_diff - away_team_run_diff) / 2
+    # Determine which date to use for games
+    if not todays_odds[todays_odds.date == EST_DATE].empty:
+        next_date_odds = EST_DATE
     else:
-        run_diff = (abs(home_team_run_diff) + abs(away_team_run_diff)) / 2
+        next_date_odds = todays_odds.date.min()
 
-    run_diff_one_game = run_diff / 5
+    # Get today's games
+    games_today = statsapi.schedule(start_date=next_date_odds, end_date=next_date_odds)
 
-    if away_team_run_diff > home_team_run_diff:
-        favorite = away_team
-        dog = home_team
-    elif home_team_run_diff > away_team_run_diff:
-        favorite = home_team
-        dog = away_team
-    else:
-        favorite = 'EVEN'
-        dog = 'EVEN'
+    # Set up dataframe for today's games
+    columns_todays_games = [
+        'date', 'home_team', 'away_team', 'home_pitcher', 'away_pitcher',
+        'home_team_run_diff', 'away_team_run_diff', 'favorite', 'dog',
+        'dog_ml', 'fav_ml_dk', 'dog_ml_dk', 'dog_odds_gap'
+    ]
+    df_todays_games = pd.DataFrame(columns=columns_todays_games)
 
-    al_teams = ['Oakland Athletics','Seattle Mariners','Texas Rangers','Tampa Bay Rays','Toronto Blue Jays','Minnesota Twins',
-                'Chicago White Sox','New York Yankees','Los Angeles Angels','Baltimore Orioles','Boston Red Sox',
-                'Cleveland Guardians','Detroit Tigers','Houston Astros','Kansas City Royals']
-
+    # League constants
+    al_teams = [
+        'Oakland Athletics', 'Seattle Mariners', 'Texas Rangers', 'Tampa Bay Rays',
+        'Toronto Blue Jays', 'Minnesota Twins', 'Chicago White Sox', 'New York Yankees',
+        'Los Angeles Angels', 'Baltimore Orioles', 'Boston Red Sox', 'Cleveland Guardians',
+        'Detroit Tigers', 'Houston Astros', 'Kansas City Royals'
+    ]
     al_cents_per_run = 1 / 4.2742998353
     nl_cents_per_run = 1 / 4.512345679
 
-    if home_team in al_teams:
-        moneyline = round(((al_cents_per_run * run_diff_one_game) * 100) + 100,0)
-    else:
-        moneyline = round(((nl_cents_per_run * run_diff_one_game) * 100) + 100,0)
+    # Process each game
+    for game in games_today:
+        date = game['game_date']
+        away_team = game['away_name']
+        home_team = game['home_name']
+        away_pitcher = game['away_probable_pitcher']
+        home_pitcher = game['home_probable_pitcher']
 
-    fav_ml = int(-moneyline)
-    dog_ml = "+" + str(int(moneyline))
+        # Get run differentials
+        away_team_run_diff = int(df_run_diff[df_run_diff.team == away_team]['l5_run_diff'].sum())
+        home_team_run_diff = int(df_run_diff[df_run_diff.team == home_team]['l5_run_diff'].sum())
 
-    away_team_run_ml_dk = todays_odds[todays_odds.team == away_team]['odds'].sum()
-    home_team_run_ml_dk = todays_odds[todays_odds.team == home_team]['odds'].sum()
+        # Calculate run differential for this matchup
+        if away_team_run_diff > 0 and home_team_run_diff > 0 and away_team_run_diff >= home_team_run_diff:
+            run_diff = (away_team_run_diff - home_team_run_diff) / 2
+        elif away_team_run_diff < 0 and home_team_run_diff < 0 and away_team_run_diff >= home_team_run_diff:
+            run_diff = (away_team_run_diff - home_team_run_diff) / 2
+        elif away_team_run_diff > 0 and home_team_run_diff > 0 and away_team_run_diff < home_team_run_diff:
+            run_diff = (home_team_run_diff - away_team_run_diff) / 2
+        elif away_team_run_diff < 0 and home_team_run_diff < 0 and away_team_run_diff < home_team_run_diff:
+            run_diff = (home_team_run_diff - away_team_run_diff) / 2
+        else:
+            run_diff = (abs(home_team_run_diff) + abs(away_team_run_diff)) / 2
 
-    fav_odds_dk = todays_odds[todays_odds.team == favorite]['odds'].sum()
-    dog_odds_dk = todays_odds[todays_odds.team == dog]['odds'].sum()
+        run_diff_one_game = run_diff / 5
 
-    if dog_odds_dk <= 0:
-        dog_ml_gap = 0
-    else:
-        dog_ml_gap = dog_odds_dk - moneyline
+        # Determine favorite and dog
+        if away_team_run_diff > home_team_run_diff:
+            favorite = away_team
+            dog = home_team
+        elif home_team_run_diff > away_team_run_diff:
+            favorite = home_team
+            dog = away_team
+        else:
+            favorite = 'EVEN'
+            dog = 'EVEN'
 
-    data_todays_games = [date,home_team,away_team,home_pitcher,away_pitcher,home_team_run_diff,away_team_run_diff,favorite,dog
-        ,moneyline,fav_odds_dk,dog_odds_dk,dog_ml_gap] # hi
-    df_todays_games.loc[len(df_todays_games)] = data_todays_games
+        # Calculate model moneyline
+        if home_team in al_teams:
+            moneyline = round(((al_cents_per_run * run_diff_one_game) * 100) + 100, 0)
+        else:
+            moneyline = round(((nl_cents_per_run * run_diff_one_game) * 100) + 100, 0)
 
-block_list = ['Colorado Rockies', 'Chicago White Sox']
-todays_eligible_games = df_todays_games[~df_todays_games['dog'].isin(block_list)]
+        # Get DraftKings odds
+        fav_odds_dk = todays_odds[todays_odds.team == favorite]['odds'].sum()
+        dog_odds_dk = todays_odds[todays_odds.team == dog]['odds'].sum()
 
-take_these_lines = todays_eligible_games[(todays_eligible_games['dog_odds_gap'] > 10) & (todays_eligible_games['dog_ml_dk'] < 200)]
+        # Calculate odds gap
+        if dog_odds_dk <= 0:
+            dog_ml_gap = 0
+        else:
+            dog_ml_gap = dog_odds_dk - moneyline
+
+        data_todays_games = [
+            date, home_team, away_team, home_pitcher, away_pitcher,
+            home_team_run_diff, away_team_run_diff, favorite, dog,
+            moneyline, fav_odds_dk, dog_odds_dk, dog_ml_gap
+        ]
+        df_todays_games.loc[len(df_todays_games)] = data_todays_games
+
+    return df_todays_games
+
+
+def get_good_plays(block_list=['Colorado Rockies', 'Chicago White Sox']):
+    """Main function to get today's good plays for MLB betting."""
+    # Get historical data and calculate run differentials
+    historical_df = get_historical_data()
+    df_run_diff = calculate_team_run_differentials(historical_df)
+
+    # Get DraftKings odds
+    odds_df = get_draftkings_odds_df()
+
+    # Get EST date
+    EST_DATE = datetime.now().astimezone(tz.gettz('America/New_York')).date()
+    todays_odds = odds_df[odds_df.date == EST_DATE]
+
+    # Analyze today's games
+    df_todays_games = analyze_todays_games(df_run_diff, odds_df)
+
+    # Filter to good plays
+    todays_eligible_games = df_todays_games[~df_todays_games['dog'].isin(block_list)]
+    return todays_eligible_games[
+        (todays_eligible_games['dog_odds_gap'] > 10) & (todays_eligible_games['dog_ml_dk'] < 200)]
+
 
 def run_predictions():
-    print(take_these_lines.to_string())
-    return take_these_lines
+    """Function to run predictions and return good plays."""
+    good_plays = get_good_plays()
+    print(good_plays.to_string())
+    return good_plays
+
+
+if __name__ == "__main__":
+    run_predictions()
