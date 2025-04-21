@@ -100,6 +100,11 @@
             font-weight: bold;
             margin-top: 10px;
         }
+        .model-odds {
+            font-size: 0.9em;
+            color: #1a3a76;
+            margin-top: 5px;
+        }
         .fade-effect {
             opacity: 0;
             animation: fadeIn 0.8s forwards;
@@ -163,6 +168,21 @@
                         <div>${game.game_time}</div>
                     `;
 
+                    // Get model ML for 5-game lookback (index 2 corresponds to 5 games in the range_data array)
+                    let awayModelML, homeModelML;
+                    const fiveGameData = game.range_data.find(d => d.num_games === 5);
+                    if (fiveGameData) {
+                        awayModelML = fiveGameData.favorite === game.away_team ? fiveGameData.fav_ml : fiveGameData.dog_ml;
+                        homeModelML = fiveGameData.favorite === game.home_team ? fiveGameData.fav_ml : fiveGameData.dog_ml;
+                        
+                        // Format with + sign if positive
+                        awayModelML = awayModelML > 0 ? `+${awayModelML}` : awayModelML;
+                        homeModelML = homeModelML > 0 ? `+${homeModelML}` : homeModelML;
+                    } else {
+                        awayModelML = 'N/A';
+                        homeModelML = 'N/A';
+                    }
+
                     // Create team info section
                     const teamInfo = document.createElement('div');
                     teamInfo.className = 'team-info';
@@ -170,13 +190,15 @@
                         <div class="team">
                             <div>${game.away_team}</div>
                             <div class="pitcher-name">${game.away_pitcher || 'TBD'}</div>
-                            <div class="dk-odds">DK: ${game.dk_away_odds}</div>
+                            <div class="dk-odds">DK ML: ${game.dk_away_odds}</div>
+                            <div class="model-odds">Model ML: ${awayModelML}</div>
                         </div>
                         <div class="vs">@</div>
                         <div class="team">
                             <div>${game.home_team}</div>
                             <div class="pitcher-name">${game.home_pitcher || 'TBD'}</div>
-                            <div class="dk-odds">DK: ${game.dk_home_odds}</div>
+                            <div class="dk-odds">DK ML: ${game.dk_home_odds}</div>
+                            <div class="model-odds">Model ML: ${homeModelML}</div>
                         </div>
                     `;
 

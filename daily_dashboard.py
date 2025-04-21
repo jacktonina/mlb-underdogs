@@ -139,7 +139,6 @@ def get_draftkings_odds_df():
             'bookmakers': BOOKMAKER
         }
     )
-    print(odds_response)
 
     # Create an empty DataFrame in case of errors
     columns = ['date', 'team', 'odds']
@@ -152,10 +151,8 @@ def get_draftkings_odds_df():
 
     try:
         odds_json = odds_response.json()
-        print(odds_json)
 
         for game in odds_json:
-            print(game)
             try:
                 start_time = parser.parse(game['commence_time'])
                 date = start_time.astimezone(tz.gettz('America/New_York')).date()
