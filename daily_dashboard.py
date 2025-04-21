@@ -5,6 +5,7 @@ import statsapi
 import pandas as pd
 import requests
 import json
+import numpy as np
 from flask import Flask, render_template
 
 
@@ -32,6 +33,53 @@ def get_historical_data(days_back=15):  # Get more days to ensure we have enough
 
     # Filter out games without scores
     return df[(df['home_score'] > 0) | (df['away_score'] > 0)]
+
+
+def get_team_last_games(historical_df, team_name, num_games=5):
+    """Get the last n games for a specific team."""
+    # Get team's games where they were either home or away
+    team_away_games = historical_df[historical_df.away_team == team_name].copy()
+    team_home_games = historical_df[historical_df.home_team == team_name].copy()
+
+    # Add result and opponent columns for away games
+    team_away_games['opponent'] = team_away_games['home_team']
+    team_away_games['is_away'] = True
+    team_away_games['team_score'] = team_away_games['away_score']
+    team_away_games['opp_score'] = team_away_games['home_score']
+    team_away_games['result'] = team_away_games.apply(
+        lambda row: f"W ({row['away_score']}-{row['home_score']})" if row['away_score'] > row['home_score']
+        else f"L ({row['away_score']}-{row['home_score']})", axis=1
+    )
+
+    # Add result and opponent columns for home games
+    team_home_games['opponent'] = team_home_games['away_team']
+    team_home_games['is_away'] = False
+    team_home_games['team_score'] = team_home_games['home_score']
+    team_home_games['opp_score'] = team_home_games['away_score']
+    team_home_games['result'] = team_home_games.apply(
+        lambda row: f"W ({row['home_score']}-{row['away_score']})" if row['home_score'] > row['away_score']
+        else f"L ({row['home_score']}-{row['away_score']})", axis=1
+    )
+
+    # Combine home and away games
+    all_games = pd.concat([team_away_games, team_home_games])
+
+    # Sort by date (newest first) and get last n games
+    all_games['date'] = pd.to_datetime(all_games['date'])
+    last_games = all_games.sort_values(by='date', ascending=False).head(num_games)
+
+    # Format date as MM/DD
+    last_games['formatted_date'] = last_games['date'].dt.strftime('%m/%d')
+
+    # Format opponent with @ for away games
+    last_games['formatted_opponent'] = last_games.apply(
+        lambda row: f"@ {row['opponent']}" if row['is_away'] else row['opponent'], axis=1
+    )
+
+    # Create result list (newest to oldest) - Convert to native Python types
+    game_results = last_games[['formatted_date', 'formatted_opponent', 'result']].to_dict('records')
+
+    return game_results
 
 
 def calculate_team_run_differentials(historical_df, num_games=5):
@@ -192,12 +240,21 @@ def calculate_moneyline_for_game(home_team, away_team, home_team_run_diff, away_
 def get_todays_games():
     """Get today's games from StatsAPI."""
     EST_DATE = datetime.now().astimezone(tz.gettz('America/New_York')).date()
-    return statsapi.schedule(start_date=EST_DATE, end_date=EST_DATE)
+    games = statsapi.schedule(start_date=EST_DATE, end_date=EST_DATE)
+
+    # Filter for upcoming games only (exclude in-progress or completed)
+    upcoming_games = []
+    for game in games:
+        # Check if game is still scheduled (not started or completed)
+        if game['status'] == 'Scheduled' or game['status'] == 'Pre-Game':
+            upcoming_games.append(game)
+
+    return upcoming_games
 
 
 def generate_game_data_for_ranges(historical_df, odds_df):
     """Generate prediction data for each game using 3-10 games of historical data."""
-    # Get today's games
+    # Get today's upcoming games
     games_today = get_todays_games()
 
     # Create results container
@@ -211,9 +268,25 @@ def generate_game_data_for_ranges(historical_df, odds_df):
         home_pitcher = game['home_probable_pitcher']
         game_time = parser.parse(game['game_datetime']).astimezone(tz.gettz('America/New_York')).strftime('%I:%M %p')
 
-        # Get DraftKings odds
-        away_team_odds = odds_df[odds_df.team == away_team]['odds'].sum()
-        home_team_odds = odds_df[odds_df.team == home_team]['odds'].sum()
+        # Get DraftKings odds for specific teams
+        try:
+            away_team_odds = odds_df[odds_df.team == away_team]['odds'].values[0] if not odds_df[
+                odds_df.team == away_team].empty else None
+            home_team_odds = odds_df[odds_df.team == home_team]['odds'].values[0] if not odds_df[
+                odds_df.team == home_team].empty else None
+
+            # Convert NumPy types to native Python types
+            if isinstance(away_team_odds, np.integer):
+                away_team_odds = int(away_team_odds)
+            if isinstance(home_team_odds, np.integer):
+                home_team_odds = int(home_team_odds)
+        except (IndexError, KeyError):
+            away_team_odds = None
+            home_team_odds = None
+
+        # Get last 5 games for each team
+        away_team_last_games = get_team_last_games(historical_df, away_team)
+        home_team_last_games = get_team_last_games(historical_df, home_team)
 
         # Calculate moneyline for different game ranges
         range_data = []
@@ -221,7 +294,7 @@ def generate_game_data_for_ranges(historical_df, odds_df):
             # Calculate run differentials using n games
             df_run_diff = calculate_team_run_differentials(historical_df, num_games)
 
-            # Get run differentials for both teams
+            # Get run differentials for both teams - convert to native Python int
             away_team_run_diff = int(df_run_diff[df_run_diff.team == away_team]['run_diff'].sum())
             home_team_run_diff = int(df_run_diff[df_run_diff.team == home_team]['run_diff'].sum())
 
@@ -230,27 +303,33 @@ def generate_game_data_for_ranges(historical_df, odds_df):
                 home_team, away_team, home_team_run_diff, away_team_run_diff
             )
 
-            # Add to results
+            # Add to results - ensure all values are native Python types
             range_data.append({
-                'num_games': num_games,
-                'away_run_diff': away_team_run_diff,
-                'home_run_diff': home_team_run_diff,
-                'favorite': moneyline_data['favorite'],
-                'dog': moneyline_data['dog'],
-                'dog_ml': moneyline_data['dog_ml'],
-                'fav_ml': moneyline_data['fav_ml']
+                'num_games': int(num_games),
+                'away_run_diff': int(away_team_run_diff),
+                'home_run_diff': int(home_team_run_diff),
+                'favorite': str(moneyline_data['favorite']),
+                'dog': str(moneyline_data['dog']),
+                'dog_ml': int(moneyline_data['dog_ml']),
+                'fav_ml': int(moneyline_data['fav_ml'])
             })
+
+        # Format odds for display with + sign for positive numbers
+        formatted_away_odds = f"+{away_team_odds}" if away_team_odds and away_team_odds > 0 else away_team_odds
+        formatted_home_odds = f"+{home_team_odds}" if home_team_odds and home_team_odds > 0 else home_team_odds
 
         # Add game info to results
         game_results.append({
-            'home_team': home_team,
-            'away_team': away_team,
-            'home_pitcher': home_pitcher,
-            'away_pitcher': away_pitcher,
-            'game_time': game_time,
-            'dk_home_odds': int(home_team_odds) if home_team_odds else 'N/A',
-            'dk_away_odds': int(away_team_odds) if away_team_odds else 'N/A',
-            'range_data': range_data
+            'home_team': str(home_team),
+            'away_team': str(away_team),
+            'home_pitcher': str(home_pitcher) if home_pitcher else "TBD",
+            'away_pitcher': str(away_pitcher) if away_pitcher else "TBD",
+            'game_time': str(game_time),
+            'dk_home_odds': str(formatted_home_odds) if home_team_odds is not None else 'N/A',
+            'dk_away_odds': str(formatted_away_odds) if away_team_odds is not None else 'N/A',
+            'range_data': range_data,
+            'away_team_last_games': away_team_last_games,
+            'home_team_last_games': home_team_last_games
         })
 
     return game_results
@@ -272,7 +351,18 @@ def dashboard():
     game_data = generate_game_data_for_ranges(historical_df, odds_df)
 
     # Convert to JSON for the frontend
-    game_data_json = json.dumps(game_data)
+    # Use a JSON encoder that can handle NumPy types
+    class NumpyEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, np.integer):
+                return int(obj)
+            elif isinstance(obj, np.floating):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            return super(NumpyEncoder, self).default(obj)
+
+    game_data_json = json.dumps(game_data, cls=NumpyEncoder)
 
     # Render the template
     return render_template('dashboard.html', game_data=game_data_json)

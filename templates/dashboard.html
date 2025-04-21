@@ -61,18 +61,35 @@
             height: 300px;
             margin-top: 20px;
         }
-        .odds-table {
+        .team-tables-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 15px;
+        }
+        .team-table-wrapper {
+            width: 50%;
+        }
+        .team-table-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 5px;
+            padding: 5px;
+            background-color: #f2f2f2;
+            border-radius: 4px;
+        }
+        .team-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
         }
-        .odds-table th, .odds-table td {
+        .team-table th, .team-table td {
             padding: 8px;
-            text-align: center;
+            text-align: left;
             border-bottom: 1px solid #ddd;
         }
-        .odds-table th {
+        .team-table th {
             background-color: #f2f2f2;
+            font-weight: normal;
         }
         .pitcher-name {
             font-size: 0.9em;
@@ -86,6 +103,19 @@
         .fade-effect {
             opacity: 0;
             animation: fadeIn 0.8s forwards;
+        }
+        .win {
+            color: green;
+            font-weight: bold;
+        }
+        .loss {
+            color: red;
+        }
+        .no-games {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2em;
+            color: #666;
         }
         @keyframes fadeIn {
             to { opacity: 1; }
@@ -109,6 +139,15 @@
         // Function to create game cards
         function createGameCards() {
             const container = document.getElementById('gamesContainer');
+            
+            // Show message if no games
+            if (!gameData || gameData.length === 0) {
+                const noGames = document.createElement('div');
+                noGames.className = 'no-games';
+                noGames.textContent = 'No upcoming games scheduled for today.';
+                container.appendChild(noGames);
+                return;
+            }
 
             gameData.forEach((game, index) => {
                 setTimeout(() => {
@@ -148,48 +187,109 @@
                     canvas.id = `chart-${index}`;
                     chartContainer.appendChild(canvas);
 
-                    // Create table for detailed data
-                    const tableContainer = document.createElement('div');
-                    const table = document.createElement('table');
-                    table.className = 'odds-table';
+                    // Create team tables container
+                    const teamTablesContainer = document.createElement('div');
+                    teamTablesContainer.className = 'team-tables-container';
 
-                    // Create table header
-                    const thead = document.createElement('thead');
-                    thead.innerHTML = `
+                    // Create away team table
+                    const awayTableWrapper = document.createElement('div');
+                    awayTableWrapper.className = 'team-table-wrapper';
+                    
+                    const awayTableTitle = document.createElement('div');
+                    awayTableTitle.className = 'team-table-title';
+                    awayTableTitle.textContent = `${game.away_team} Last 5 Games`;
+                    
+                    const awayTable = document.createElement('table');
+                    awayTable.className = 'team-table';
+                    
+                    // Create away team table header
+                    const awayThead = document.createElement('thead');
+                    awayThead.innerHTML = `
                         <tr>
-                            <th>Games</th>
-                            <th>${game.away_team} RD</th>
-                            <th>${game.home_team} RD</th>
-                            <th>Favorite</th>
-                            <th>Dog</th>
-                            <th>ML</th>
+                            <th>Date</th>
+                            <th>Opponent</th>
+                            <th>Result</th>
                         </tr>
                     `;
-
-                    // Create table body
-                    const tbody = document.createElement('tbody');
-                    game.range_data.forEach(data => {
+                    
+                    // Create away team table body
+                    const awayTbody = document.createElement('tbody');
+                    if (game.away_team_last_games && game.away_team_last_games.length > 0) {
+                        game.away_team_last_games.forEach(gameData => {
+                            const tr = document.createElement('tr');
+                            const resultClass = gameData.result.startsWith('W') ? 'win' : 'loss';
+                            tr.innerHTML = `
+                                <td>${gameData.formatted_date}</td>
+                                <td>${gameData.formatted_opponent}</td>
+                                <td class="${resultClass}">${gameData.result}</td>
+                            `;
+                            awayTbody.appendChild(tr);
+                        });
+                    } else {
                         const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${data.num_games}</td>
-                            <td>${data.away_run_diff}</td>
-                            <td>${data.home_run_diff}</td>
-                            <td>${data.favorite}</td>
-                            <td>${data.dog}</td>
-                            <td>${data.favorite === game.away_team ? data.fav_ml : data.dog_ml} / ${data.favorite === game.home_team ? data.fav_ml : data.dog_ml}</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
+                        tr.innerHTML = `<td colspan="3">No recent games available</td>`;
+                        awayTbody.appendChild(tr);
+                    }
+                    
+                    awayTable.appendChild(awayThead);
+                    awayTable.appendChild(awayTbody);
+                    awayTableWrapper.appendChild(awayTableTitle);
+                    awayTableWrapper.appendChild(awayTable);
 
-                    table.appendChild(thead);
-                    table.appendChild(tbody);
-                    tableContainer.appendChild(table);
+                    // Create home team table
+                    const homeTableWrapper = document.createElement('div');
+                    homeTableWrapper.className = 'team-table-wrapper';
+                    
+                    const homeTableTitle = document.createElement('div');
+                    homeTableTitle.className = 'team-table-title';
+                    homeTableTitle.textContent = `${game.home_team} Last 5 Games`;
+                    
+                    const homeTable = document.createElement('table');
+                    homeTable.className = 'team-table';
+                    
+                    // Create home team table header
+                    const homeThead = document.createElement('thead');
+                    homeThead.innerHTML = `
+                        <tr>
+                            <th>Date</th>
+                            <th>Opponent</th>
+                            <th>Result</th>
+                        </tr>
+                    `;
+                    
+                    // Create home team table body
+                    const homeTbody = document.createElement('tbody');
+                    if (game.home_team_last_games && game.home_team_last_games.length > 0) {
+                        game.home_team_last_games.forEach(gameData => {
+                            const tr = document.createElement('tr');
+                            const resultClass = gameData.result.startsWith('W') ? 'win' : 'loss';
+                            tr.innerHTML = `
+                                <td>${gameData.formatted_date}</td>
+                                <td>${gameData.formatted_opponent}</td>
+                                <td class="${resultClass}">${gameData.result}</td>
+                            `;
+                            homeTbody.appendChild(tr);
+                        });
+                    } else {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `<td colspan="3">No recent games available</td>`;
+                        homeTbody.appendChild(tr);
+                    }
+                    
+                    homeTable.appendChild(homeThead);
+                    homeTable.appendChild(homeTbody);
+                    homeTableWrapper.appendChild(homeTableTitle);
+                    homeTableWrapper.appendChild(homeTable);
+
+                    // Add tables to container
+                    teamTablesContainer.appendChild(awayTableWrapper);
+                    teamTablesContainer.appendChild(homeTableWrapper);
 
                     // Assemble the card
                     gameCard.appendChild(gameHeader);
                     gameCard.appendChild(teamInfo);
                     gameCard.appendChild(chartContainer);
-                    gameCard.appendChild(tableContainer);
+                    gameCard.appendChild(teamTablesContainer);
 
                     // Add card to container
                     container.appendChild(gameCard);
@@ -282,4 +382,3 @@
     </script>
 </body>
 </html>
-    
