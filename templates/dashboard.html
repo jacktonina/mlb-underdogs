@@ -21,6 +21,10 @@
             border-radius: 5px;
             margin-bottom: 20px;
         }
+        .date-display {
+            font-size: 1.1em;
+            margin-top: 5px;
+        }
         .games-container {
             display: flex;
             flex-wrap: wrap;
@@ -34,13 +38,32 @@
             padding: 15px;
             width: 600px;
             margin-bottom: 20px;
+            position: relative;
         }
         .game-header {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column; /* Change to column layout */
+            align-items: center; /* Center items horizontally */
             margin-bottom: 15px;
             padding-bottom: 10px;
             border-bottom: 1px solid #eee;
+            position: relative;
+        }
+        /* Position the game time above the game title */
+        .game-time {
+            width: 100%;
+            text-align: right;
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px; /* Add space between time and title */
+        }
+        /* Center the game title with adequate spacing */
+        .game-header h2 {
+            text-align: center;
+            margin: 0;
+            padding: 0 10px; /* Add horizontal padding */
+            max-width: 100%; /* Ensure it doesn't overflow */
+            word-wrap: break-word; /* Allow long titles to wrap */
         }
         .team-info {
             display: flex;
@@ -51,6 +74,11 @@
             text-align: center;
             width: 45%;
         }
+        /* Center team names with font-weight for emphasis */
+        .team-name {
+            text-align: center;
+            font-weight: bold;
+        }
         .vs {
             display: flex;
             align-items: center;
@@ -60,21 +88,30 @@
         .chart-container {
             height: 300px;
             margin-top: 20px;
+            /* Increase margin-bottom to create more space below the chart */
+            margin-bottom: 70px;
             position: relative;
+        }
+        .chart-title {
+            display: flex;
+            justify-content: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 5px;
         }
         .chart-legend {
             display: flex;
             justify-content: center;
             margin-bottom: 10px;
             padding: 5px;
-            border-radius: 4px;
+            font-size: 0.9em;
             background-color: #f9f9f9;
+            border-radius: 4px;
         }
         .legend-item {
             display: flex;
             align-items: center;
             margin: 0 10px;
-            font-size: 0.9em;
         }
         .legend-color {
             width: 14px;
@@ -85,7 +122,8 @@
         .team-tables-container {
             display: flex;
             justify-content: space-between;
-            margin-top: 20px;
+            /* Increase top margin to create more space between chart and tables */
+            margin-top: 80px;
             gap: 15px;
         }
         .team-table-wrapper {
@@ -150,8 +188,8 @@
 </head>
 <body>
     <div class="header">
-        <h1>MLB Prediction Dashboard</h1>
-        <p>Model Moneyline Predictions Using Different Game History Ranges</p>
+        <h1>MLB Daily Predictions Dashboard</h1>
+        <div class="date-display" id="currentDate"></div>
     </div>
 
     <div class="games-container" id="gamesContainer">
@@ -162,9 +200,33 @@
         // Parse game data from Flask
         const gameData = JSON.parse('{{ game_data|safe }}');
 
+        // Format current date as "Tuesday, April 22nd 2025"
+        function formatDate(date) {
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            const dayOfWeek = days[date.getDay()];
+            const month = months[date.getMonth()];
+            const dayOfMonth = date.getDate();
+            const year = date.getFullYear();
+            
+            // Add ordinal suffix
+            let suffix = 'th';
+            if (dayOfMonth === 1 || dayOfMonth === 21 || dayOfMonth === 31) suffix = 'st';
+            else if (dayOfMonth === 2 || dayOfMonth === 22) suffix = 'nd';
+            else if (dayOfMonth === 3 || dayOfMonth === 23) suffix = 'rd';
+            
+            return `${dayOfWeek}, ${month} ${dayOfMonth}${suffix} ${year}`;
+        }
+
         // Function to create game cards
         function createGameCards() {
             const container = document.getElementById('gamesContainer');
+            
+            // Display the current date
+            const dateElement = document.getElementById('currentDate');
+            dateElement.textContent = formatDate(new Date());
             
             // Show message if no games
             if (!gameData || gameData.length === 0) {
@@ -181,12 +243,12 @@
                     const gameCard = document.createElement('div');
                     gameCard.className = 'game-card fade-effect';
 
-                    // Create game header
+                    // Create game header with time above title
                     const gameHeader = document.createElement('div');
                     gameHeader.className = 'game-header';
                     gameHeader.innerHTML = `
+                        <div class="game-time">${game.game_time} EST</div>
                         <h2>${game.away_team} @ ${game.home_team}</h2>
-                        <div>${game.game_time}</div>
                     `;
 
                     // Get model ML for 5-game lookback (index 2 corresponds to 5 games in the range_data array)
@@ -204,19 +266,19 @@
                         homeModelML = 'N/A';
                     }
 
-                    // Create team info section
+                    // Create team info section with centered team names
                     const teamInfo = document.createElement('div');
                     teamInfo.className = 'team-info';
                     teamInfo.innerHTML = `
                         <div class="team">
-                            <div>${game.away_team}</div>
+                            <div class="team-name">${game.away_team}</div>
                             <div class="pitcher-name">${game.away_pitcher || 'TBD'}</div>
                             <div class="dk-odds">DK ML: ${game.dk_away_odds}</div>
                             <div class="model-odds">Model ML: ${awayModelML}</div>
                         </div>
                         <div class="vs">@</div>
                         <div class="team">
-                            <div>${game.home_team}</div>
+                            <div class="team-name">${game.home_team}</div>
                             <div class="pitcher-name">${game.home_pitcher || 'TBD'}</div>
                             <div class="dk-odds">DK ML: ${game.dk_home_odds}</div>
                             <div class="model-odds">Model ML: ${homeModelML}</div>
@@ -228,7 +290,17 @@
                     const homeTeamColor = 'rgba(255, 99, 132, 0.8)';  // Red
                     const evenColor = 'rgba(150, 150, 150, 0.8)';     // Gray for EVEN
 
-                    // Create legend
+                    // Create chart container
+                    const chartContainer = document.createElement('div');
+                    chartContainer.className = 'chart-container';
+                    
+                    // Add chart title with larger font
+                    const chartTitle = document.createElement('div');
+                    chartTitle.className = 'chart-title';
+                    chartTitle.textContent = 'Underdog MLs by Lookback Window';
+                    chartContainer.appendChild(chartTitle);
+                    
+                    // Add legend between title and chart with smaller font
                     const chartLegend = document.createElement('div');
                     chartLegend.className = 'chart-legend';
                     chartLegend.innerHTML = `
@@ -245,12 +317,6 @@
 <!--                            <span>Even</span>-->
 <!--                        </div>-->
                     `;
-
-                    // Create chart container
-                    const chartContainer = document.createElement('div');
-                    chartContainer.className = 'chart-container';
-                    
-                    // Add legend to chart container
                     chartContainer.appendChild(chartLegend);
                     
                     // Add canvas for chart
@@ -411,19 +477,34 @@
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Positive Moneyline'
+                                text: 'Underdog ML'
+                            },
+                            // Add horizontal line at y=100 representing "even" odds
+                            grid: {
+                                color: function(context) {
+                                    if (context.tick.value === 100) {
+                                        return 'rgba(255, 0, 0, 0.5)'; // Red line for "even"
+                                    }
+                                    return 'rgba(0, 0, 0, 0.1)'; // Default grid line color
+                                },
+                                lineWidth: function(context) {
+                                    if (context.tick.value === 100) {
+                                        return 2; // Make the "even" line thicker
+                                    }
+                                    return 1; // Default line width
+                                }
                             }
                         },
                         x: {
                             title: {
-                                display: true,
+                                display: false, // Hide x-axis label to prevent overlap
                                 text: 'Game History Range'
                             }
                         }
                     },
                     plugins: {
                         title: {
-                            display: true,
+                            display: false, // Hide default title since we created our own
                             text: 'Underdog ML by Historical Range'
                         },
                         tooltip: {
