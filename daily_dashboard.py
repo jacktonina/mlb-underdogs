@@ -308,7 +308,10 @@ def generate_game_data_for_ranges(historical_df, odds_df):
                 'favorite': str(moneyline_data['favorite']),
                 'dog': str(moneyline_data['dog']),
                 'dog_ml': int(moneyline_data['dog_ml']),
-                'fav_ml': int(moneyline_data['fav_ml'])
+                'fav_ml': int(moneyline_data['fav_ml']),
+                # Add positive ML for bar chart
+                'positive_ml': int(moneyline_data['dog_ml']),
+                'underdog': str(moneyline_data['dog'])
             })
 
         # Format odds for display with + sign for positive numbers

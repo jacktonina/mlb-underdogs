@@ -60,6 +60,27 @@
         .chart-container {
             height: 300px;
             margin-top: 20px;
+            position: relative;
+        }
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+            padding: 5px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0 10px;
+            font-size: 0.9em;
+        }
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            margin-right: 5px;
+            border-radius: 2px;
         }
         .team-tables-container {
             display: flex;
@@ -202,9 +223,37 @@
                         </div>
                     `;
 
+                    // Define colors for the chart and legend
+                    const awayTeamColor = 'rgba(54, 162, 235, 0.8)';  // Blue
+                    const homeTeamColor = 'rgba(255, 99, 132, 0.8)';  // Red
+                    const evenColor = 'rgba(150, 150, 150, 0.8)';     // Gray for EVEN
+
+                    // Create legend
+                    const chartLegend = document.createElement('div');
+                    chartLegend.className = 'chart-legend';
+                    chartLegend.innerHTML = `
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: ${awayTeamColor}"></div>
+                            <span>${game.away_team}</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: ${homeTeamColor}"></div>
+                            <span>${game.home_team}</span>
+                        </div>
+<!--                        <div class="legend-item">-->
+<!--                            <div class="legend-color" style="background-color: ${evenColor}"></div>-->
+<!--                            <span>Even</span>-->
+<!--                        </div>-->
+                    `;
+
                     // Create chart container
                     const chartContainer = document.createElement('div');
                     chartContainer.className = 'chart-container';
+                    
+                    // Add legend to chart container
+                    chartContainer.appendChild(chartLegend);
+                    
+                    // Add canvas for chart
                     const canvas = document.createElement('canvas');
                     canvas.id = `chart-${index}`;
                     chartContainer.appendChild(canvas);
@@ -316,81 +365,86 @@
                     // Add card to container
                     container.appendChild(gameCard);
 
-                    // Create chart
-                    createChart(canvas.id, game);
+                    // Create chart - pass the colors too
+                    createChart(canvas.id, game, {awayTeamColor, homeTeamColor, evenColor});
 
                 }, index * 100); // Stagger the animation
             });
         }
 
         // Function to create chart for a game
-        function createChart(canvasId, game) {
+        function createChart(canvasId, game, colors) {
             const ctx = document.getElementById(canvasId).getContext('2d');
 
             // Prepare data
             const labels = game.range_data.map(d => `${d.num_games} games`);
-            const awayData = game.range_data.map(d => {
-                return d.favorite === game.away_team ? d.fav_ml : d.dog_ml;
+            const positiveMLValues = game.range_data.map(d => d.positive_ml);
+            
+            // Get underdog for each data point (for coloring)
+            const underdogTeams = game.range_data.map(d => d.underdog);
+            
+            // Generate bar colors based on underdog
+            const barColors = underdogTeams.map(team => {
+                if (team === game.away_team) return colors.awayTeamColor;
+                if (team === game.home_team) return colors.homeTeamColor;
+                return colors.evenColor; // For EVEN odds
             });
-            const homeData = game.range_data.map(d => {
-                return d.favorite === game.home_team ? d.fav_ml : d.dog_ml;
-            });
-
+            
             // Create the chart
             new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: labels,
-                    datasets: [
-                        {
-                            label: game.away_team,
-                            data: awayData.map(ml => ml < 0 ? ml : ml),
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            borderWidth: 2,
-                            tension: 0.1
-                        },
-                        {
-                            label: game.home_team,
-                            data: homeData.map(ml => ml < 0 ? ml : ml),
-                            borderColor: 'rgba(255, 99, 132, 1)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            borderWidth: 2,
-                            tension: 0.1
-                        }
-                    ]
+                    datasets: [{
+                        label: 'Underdog Moneyline',
+                        data: positiveMLValues,
+                        backgroundColor: barColors,
+                        borderColor: barColors.map(color => color.replace('0.8', '1')),
+                        borderWidth: 1
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
                         y: {
+                            beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Moneyline'
+                                text: 'Positive Moneyline'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Game History Range'
                             }
                         }
                     },
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Model ML by Historical Range'
+                            text: 'Underdog ML by Historical Range'
                         },
                         tooltip: {
                             callbacks: {
+                                title: function(context) {
+                                    return context[0].label;
+                                },
                                 label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.raw < 0) {
-                                        label += context.raw;
+                                    const underdog = underdogTeams[context.dataIndex];
+                                    const value = '+' + context.raw;
+                                    
+                                    if (underdog === "EVEN") {
+                                        return 'Even odds: ' + value;
                                     } else {
-                                        label += '+' + context.raw;
+                                        return `${underdog} (underdog): ${value}`;
                                     }
-                                    return label;
                                 }
                             }
+                        },
+                        legend: {
+                            display: false // Hide the default legend since we created our own
                         }
                     }
                 }
