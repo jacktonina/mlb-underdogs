@@ -2,7 +2,10 @@ name: Post Daily Picks
 
 on:
   schedule:
-    - cron: "30 14 * * *"  # Runs every day at 14:00 UTC / 7:00 PST
+    - cron: "30 14 * * 1-3"  # Monday - Wednesday post at 7:30AM PST
+    - cron: "0 14 * * 4"  # Thursday post at 7:00AM PST
+    - cron: "45 13 * * 5"  # Friday post at 6:45AM PST
+    - cron: "0 15 * * 6-7"  # Saturday & Sunday post at 8:00AM PST
 
   workflow_dispatch:  # Allows manual trigger from GitHub Actions tab
 
