@@ -37,18 +37,18 @@ for index, row in todays_preds.iterrows():
 # Construct your tweet text
 if len(picks) == 1:
     header = f"{formatted_date} Underdog ML Pick:"
-    tweet_text = f"{header}\n\n" + "🔒 " + "\n".join(picks) + "\n\n" + "Model only turned up one play for us today - let's see what we can do!🤞🤞🤞" + "\n\n" + "#MLB #GamblingTwitter #FreePicks #GamblingX #MLBBets"
+    tweet_text = f"{header}\n\n" + "⚾️ " + "\n".join(picks) + "\n\n" + "Only one play from the model today, let's make it count!🎯 RT if you're riding!" + "\n\n" + "#SportsBetting #MLBPicks"
 elif len(picks) == 2:
     header = f"{formatted_date} Underdog ML Picks:"
-    tweet_text = f"{header}\n\n" + "🔒 " + "\n🔒 ".join(picks) + "\n\n" + "We got two plays from our model today... Just need one hit to profit!🤞🤞🤞" + "\n\n" + "#MLB #GamblingTwitter #FreePicks #GamblingX #MLBBets"
+    tweet_text = f"{header}\n\n" + "⚾ " + "\n⚾ ".join(picks) + "\n\n" + "We got two plays from the model today! Think we can go 2-0??🧹🧹 RT if you're riding!" + "\n\n" + "#SportsBetting #MLBPicks"
 elif len(picks) > 2 and len(picks) < 5:
     header = f"{formatted_date} Underdog ML Picks:"
-    tweet_text = f"{header}\n\n" + "🔒 " + "\n🔒 ".join(picks) + "\n\n" + "Few picks today from our model, hopefully we get a couple hits here and stay in the green!🤞🤞🤞 " + "\n\n" + "#MLB #GamblingTwitter #FreePicks #GamblingX #MLBBets"
+    tweet_text = f"{header}\n\n" + "⚾ " + "\n⚾ ".join(picks) + "\n\n" + "Few picks today from our model, hopefully we get a couple hits! Can we sweep this slate? 🧹🧹🧹" + "\n\n" + "#SportsBetting #MLBPicks"
 elif len(picks) >= 5:
     header = f"{formatted_date} Underdog ML Picks:"
-    tweet_text = f"{header}\n\n" + "🔒 " + "\n🔒 ".join(picks) + "\n\n" + "Our model LOVES todays slate of dogs! Lot on the line here... praying for some upsets!🤞🤞🤞" + "\n\n" + "#MLB #GamblingTwitter #FreePicks #GamblingX #MLBBets"
+    tweet_text = f"{header}\n\n" + "⚾ " + "\n⚾ ".join(picks) + "\n\n" + "Our model LOVES todays slate of dogs! Got a lot on the line here, let's have a day!💰💰 Which are you riding?" + "\n\n" + "#SportsBetting #MLBPicks"
 else:
-    tweet_text = f"Our model didn't turn up any underdogs with value today. It's a long season, stay disciplined and stick to the system. Check back tomorrow for our next slate of picks!💪💪💪" + "\n\n" + "In the meantime - what lines are you on today? Drop 'em in the thread and I'll ride with you!"
+    tweet_text = f"Our model didn't turn up any underdogs with value today. Check back tomorrow for our next slate of picks!🔥" + "\n\n" + "What are your favorite bets today? Drop 'em in the thread!🧵"
 print(tweet_text)
 
 # Post the tweet
