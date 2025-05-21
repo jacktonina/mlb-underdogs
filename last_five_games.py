@@ -90,14 +90,19 @@ def get_draftkings_odds_df():
     odds_df = pd.DataFrame(columns=columns)
 
     for game in odds_json:
-        start_time = parser.parse(game['commence_time'])
-        date = start_time.astimezone(tz.gettz('America/New_York')).date()
-        odds = game['bookmakers'][0]['markets'][0]['outcomes']
-        for i in odds:
-            team = i['name']
-            odds = i['price']
-            data = [date, team, odds]
-            odds_df.loc[len(odds_df)] = data
+        try:
+            start_time = parser.parse(game['commence_time'])
+            date = start_time.astimezone(tz.gettz('America/New_York')).date()
+            odds = game['bookmakers'][0]['markets'][0]['outcomes']
+
+            for i in odds:
+                team = i['name']
+                odds_value = i['price']
+                data = [date, team, odds_value]
+                odds_df.loc[len(odds_df)] = data
+        except (KeyError, IndexError):
+            # Skip this game if any required field is missing
+            continue
 
     return odds_df
 
