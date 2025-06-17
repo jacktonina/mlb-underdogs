@@ -104,7 +104,9 @@ def get_draftkings_odds_df():
             # Skip this game if any required field is missing
             continue
 
-    return odds_df
+    todays_odds = odds_df[odds_df['date'] == datetime.now().date()]
+
+    return todays_odds
 
 
 def analyze_todays_games(df_run_diff, todays_odds):
@@ -220,15 +222,21 @@ def get_good_plays(block_list=['Colorado Rockies', 'Chicago White Sox']):
 
     # Filter to good plays
     todays_eligible_games = df_todays_games[~df_todays_games['dog'].isin(block_list)]
-    return todays_eligible_games[
-        (todays_eligible_games['dog_odds_gap'] > 10) & (todays_eligible_games['dog_ml_dk'] < 200)]
+
+    # Official plays are where DK odds are +10pts higher than model, and DK odds loss than +200
+    todays_picks = todays_eligible_games[(todays_eligible_games['dog_odds_gap'] > 10) & (todays_eligible_games['dog_ml_dk'] < 200)]
+
+    #TESTING LOGGING MODEL FAVORITES / DK UNDERDOGS
+    todays_eligible_favs = df_todays_games[~df_todays_games['favorite'].isin(block_list)]
+    test_log_favs = todays_eligible_favs[(todays_eligible_favs['dog_ml_dk'] < 0) & (todays_eligible_favs['fav_ml_dk'] > 0)]
+
+    return todays_picks, test_log_favs
 
 
 def run_predictions():
     """Function to run predictions and return good plays."""
-    good_plays = get_good_plays()
-    print(good_plays.to_string())
-    return good_plays
+    todays_picks, test_log_favs = get_good_plays()
+    return todays_picks, test_log_favs
 
 
 if __name__ == "__main__":

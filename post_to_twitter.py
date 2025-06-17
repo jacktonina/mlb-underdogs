@@ -14,7 +14,7 @@ client = tweepy.Client(
 )
 
 # Get your model result (this could be any result from your script)
-todays_preds = run_predictions()
+todays_preds, test_favs = run_predictions()
 
 picks = []
 
