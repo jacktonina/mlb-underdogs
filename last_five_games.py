@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 
-import streamlit
 from dateutil import parser
 from dateutil import tz
 import statsapi
