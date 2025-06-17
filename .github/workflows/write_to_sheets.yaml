@@ -1,4 +1,4 @@
-name: Run MLB Betting Script
+name: Write to Google Sheets
 
 on:
   schedule:
