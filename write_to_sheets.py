@@ -22,7 +22,6 @@ client = gspread.authorize(creds)
 # Open the Google Sheet (use the sheet's name or URL)
 spreadsheet = client.open("MLB Underdog ML Betting")  # Name of the Google Sheet
 log_sheet = spreadsheet.worksheet("daily_predictions")
-test_log_favs_sheet = spreadsheet.worksheet("test_log_favs")
 
 def append_unique_df_to_sheet(df, sheet):
     # Convert DataFrame to list of lists
@@ -40,8 +39,7 @@ def append_unique_df_to_sheet(df, sheet):
     if unique_rows:
         sheet.append_rows(unique_rows, value_input_option="USER_ENTERED")
 
-todays_preds, test_log_favs = run_predictions()
+todays_preds = run_predictions()
 print(todays_preds)
 
 append_unique_df_to_sheet(todays_preds, log_sheet)
-append_unique_df_to_sheet(test_log_favs, test_log_favs_sheet)
