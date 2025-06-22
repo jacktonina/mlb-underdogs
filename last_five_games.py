@@ -190,7 +190,7 @@ def analyze_todays_games(df_run_diff, todays_odds):
 
         # Calculate odds gap
         if dog_odds_dk <= 0:
-            dog_ml_gap = 0
+            dog_ml_gap = (moneyline - 100) + (fav_odds_dk - 100)
         else:
             dog_ml_gap = dog_odds_dk - moneyline
 
@@ -220,23 +220,23 @@ def get_good_plays(block_list=['Colorado Rockies', 'Chicago White Sox']):
     # Analyze today's games
     df_todays_games = analyze_todays_games(df_run_diff, odds_df)
 
-    # Filter to good plays
-    todays_eligible_games = df_todays_games[~df_todays_games['dog'].isin(block_list)]
+    # If my models underdog is DK favorite, reverse labels below
+    mask = df_todays_games['dog_ml_dk'] < 0
+    df_todays_games.loc[mask, ['favorite', 'dog']] = df_todays_games.loc[mask, ['dog', 'favorite']].values
+    df_todays_games.loc[mask, ['fav_ml_dk', 'dog_ml_dk']] = df_todays_games.loc[mask, ['dog_ml_dk', 'fav_ml_dk']].values
+    df_todays_games.loc[mask, 'dog_ml'] = -df_todays_games.loc[mask, 'dog_ml']
 
     # Official plays are where DK odds are +10pts higher than model, and DK odds loss than +200
-    todays_picks = todays_eligible_games[(todays_eligible_games['dog_odds_gap'] > 10) & (todays_eligible_games['dog_ml_dk'] < 200)]
+    todays_eligible_dogs = df_todays_games[~df_todays_games['dog'].isin(block_list)]
+    todays_dog_picks = todays_eligible_dogs[(todays_eligible_dogs['dog_odds_gap'] > 10) & (todays_eligible_dogs['dog_ml_dk'] < 200)]
 
-    #TESTING LOGGING MODEL FAVORITES / DK UNDERDOGS
-    todays_eligible_favs = df_todays_games[~df_todays_games['favorite'].isin(block_list)]
-    test_log_favs = todays_eligible_favs[(todays_eligible_favs['dog_ml_dk'] < 0) & (todays_eligible_favs['fav_ml_dk'] > 0)]
-
-    return todays_picks, test_log_favs
+    return todays_dog_picks
 
 
 def run_predictions():
     """Function to run predictions and return good plays."""
-    todays_picks, test_log_favs = get_good_plays()
-    return todays_picks, test_log_favs
+    todays_picks = get_good_plays()
+    return todays_picks
 
 
 if __name__ == "__main__":
