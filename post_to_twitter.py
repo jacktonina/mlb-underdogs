@@ -14,13 +14,12 @@ client = tweepy.Client(
 )
 
 # Get your model result (this could be any result from your script)
-todays_preds, test_favs = run_predictions()
+todays_preds = run_predictions()
 
 picks = []
 
 for index, row in todays_preds.iterrows():
     underdog = row['dog']
-    favorite = row['favorite']
     dog_ml_dk = row['dog_ml_dk']
     dog_ml_model = row['dog_ml']
 
