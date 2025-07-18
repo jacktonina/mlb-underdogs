@@ -6,7 +6,7 @@ import pandas as pd
 import requests
 
 
-def get_historical_data(days_back=8):
+def get_historical_data(days_back=13):
     """Get MLB games from the past days_back days and create a dataframe."""
     # Get historical games
     start_date = (datetime.now() - timedelta(days=days_back)).date()
