@@ -175,8 +175,8 @@ def analyze_todays_games(df_run_diff, todays_odds):
             favorite = home_team
             dog = away_team
         else:
-            favorite = 'EVEN'
-            dog = 'EVEN'
+            favorite = home_team
+            dog = away_team
 
         # Calculate model moneyline
         if home_team in al_teams:
